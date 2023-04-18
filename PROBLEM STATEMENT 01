@@ -1,0 +1,66 @@
+import os
+import pickle
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+
+
+# Set the path to the video file
+VIDEO_FILE = 'path/to/video/file.mp4'
+
+# Set the credentials file path
+CLIENT_SECRETS_FILE = 'path/to/client_secret.json'
+
+# Set the API name and version
+API_NAME = 'youtube'
+API_VERSION = 'v3'
+
+# Set the video metadata
+video_metadata = {
+    'snippet': {
+        'title': 'My video title',
+        'description': 'My video description',
+        'tags': ['tag1', 'tag2'],
+        'categoryId': '22'
+    },
+    'status': {
+        'privacyStatus': 'private',
+        'embeddable': True,
+        'license': 'youtube'
+    }
+}
+
+# Authorize the user
+creds = None
+
+if os.path.exists('token.pickle'):
+    with open('token.pickle', 'rb') as token:
+        creds = pickle.load(token)
+
+if not creds or not creds.valid:
+    if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+    else:
+        flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, ['https://www.googleapis.com/auth/youtube.upload'])
+        creds = flow.run_local_server(port=0)
+
+    with open('token.pickle', 'wb') as token:
+        pickle.dump(creds, token)
+
+# Build the YouTube API client
+youtube = build(API_NAME, API_VERSION, credentials=creds)
+
+# Upload the video
+try:
+    insert_request = youtube.videos().insert(
+        part='snippet,status',
+        body=video_metadata,
+        media_body=MediaFileUpload(VIDEO_FILE)
+    )
+    response = insert_request.execute()
+
+    print(f'The video was successfully uploaded with ID: {response["id"]}')
+
+except HttpError as e:
+    print(f'An error occurred while uploading the video: {e}')
