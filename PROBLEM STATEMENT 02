@@ -1,0 +1,72 @@
+import google.auth
+from googleapiclient.discovery import build
+
+pip install fake_useragent
+
+from fake_useragent import UserAgent
+from bs4 import BeautifulSoup
+import requests
+import pandas as pd
+import time
+import re
+import numpy as np
+
+def get_youtube_info(url,ua,crawl_delay):
+  header = {"user-agent": ua.random}
+  time.sleep(crawl_delay)
+  request = requests.get(url,headers=header,verify=True)
+  soup = BeautifulSoup(request.content,"html.parser")
+  tags = soup.find_all("meta",property="og:video:tag")
+  titles = soup.find("title")
+  try:
+    getdesc = re.search('description\":{\"simpleText\":\".*\"',request.text)
+    desc = getdesc
+    desc = desc.replace('description":{"simpleText":"','')
+    desc = desc.replace('"','')
+    desc = desc.replace('\n','')
+  except:
+    desc = "n/a"
+  getdate = re.search('[a-zA-z]{3}\s[0-9]{1,2},\s[0-9]{4}',request.text)
+  vid_date = getdate
+
+  getviews = re.search('[0-9,]+\sviews',request.text)
+  vid_views = getdate
+
+  return tags,titles,vid_date,desc
+  
+  def tag_matches(desc, vid_tag_list):
+  vid_tag_list = vid_tag_list.split(',')
+  matches = ""
+
+  for x in vid_tag_list:
+    if (desc.find(x) != -1):
+      matches += x + ","
+
+  return matches
+  
+  import pandas as pd 
+import numpy as np
+
+lnk = ['https://youtu.be/-sx_SsxvtAg', 'https://youtu.be/0cwtNOq_k4w']
+df = pd.DataFrame(lnk)  
+urls_list = lnk
+
+ua = UserAgent()
+delays = [*range(10,22,1)]
+
+df2 = pd.DataFrame(columns = ['URL', 'Title', 'Date', 'Views','Tags', 'Tag Matches in Desc']
+
+for x in urls_list:
+  crawl_delay = np.random.choice(delays)
+  vid_tags,titles,vid_date,desc = get_youtube_info(x,ua,crawl_delay)
+
+  vid_tag_list = ""
+  for i in vid_tags:
+    vid_tag_list += i['content'] + ", "
+    matches = tag_matches(desc,vid_tag_list)
+    title = titles.replace(' - YouTube','')
+
+    dict1 = {'URL':x,'Title':title,'Date':vid_date,'Tags':vid_tag_list,'Tag Matches in Desc':matches}
+    df2 = df2.append(dict1, ignore_index=True)
+
+df2.to_csv("vid-list.csv")
